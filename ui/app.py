@@ -19,6 +19,8 @@ from utils.email import EmailSender, create_round_email_body, create_final_email
 from utils.file_utils import (create_log_directory, create_markdown_summary, 
                              create_round_markdown, write_json_file)
 from core.benchmark import run_benchmark, sample_random_requests, save_benchmark_result
+# 导入版本信息
+from version import VERSION, AUTHOR, CONTACT, DEVELOPMENT_INFO
 
 # 导入其他标签页模块
 from ui.main_tab import MainTab
@@ -81,8 +83,8 @@ class BenchmarkApp(tk.Tk):
         """初始化应用主窗口"""
         super().__init__()
         
-        # 设置窗口属性
-        self.title("LLM服务基准测试工具")
+        # 设置窗口属性，添加版本号
+        self.title(f"LLM服务基准测试工具 - v{VERSION}")
         self.geometry("900x700")
         self.minsize(800, 600)
         
@@ -114,11 +116,24 @@ class BenchmarkApp(tk.Tk):
         self.notebook.add(self.scenarios_tab, text="测试场景")
         self.notebook.add(self.logs_tab, text="日志")
         
-        # 状态栏
+        # 状态栏 - 先创建状态栏
         self.status_var = tk.StringVar()
         self.status_var.set("就绪")
         self.status_bar = ttk.Label(self, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        # 添加版本和作者信息框架 - 然后再创建信息框架
+        self.info_frame = ttk.Frame(self)
+        self.info_frame.pack(side=tk.BOTTOM, fill=tk.X, before=self.status_bar)
+        
+        # 版本和作者信息
+        version_info = f"版本: {VERSION} | 作者: {AUTHOR} | 联系方式: {CONTACT}"
+        self.version_label = ttk.Label(self.info_frame, text=version_info, anchor=tk.E)
+        self.version_label.pack(side=tk.RIGHT, padx=10, pady=2)
+        
+        # 开发信息
+        self.dev_info_label = ttk.Label(self.info_frame, text=DEVELOPMENT_INFO, anchor=tk.W, font=("", 8, "italic"))
+        self.dev_info_label.pack(side=tk.LEFT, padx=10, pady=2)
         
         # 加载配置
         self.load_configs()

@@ -1,0 +1,32 @@
+
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 0, 0),
+    prodvers=(1, 0, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+    ),
+  kids=[
+    StringFileInfo(
+      [
+      StringTable(
+        u'080404b0',
+        [StringStruct(u'CompanyName', u'邢漫路'),
+        StringStruct(u'FileDescription', u'LLM服务基准测试工具'),
+        StringStruct(u'FileVersion', u'1.0.0'),
+        StringStruct(u'InternalName', u'LLM基准测试工具'),
+        StringStruct(u'LegalCopyright', u'© 邢漫路. All rights reserved.'),
+        StringStruct(u'OriginalFilename', u'LLM基准测试工具.exe'),
+        StringStruct(u'ProductName', u'LLM基准测试工具'),
+        StringStruct(u'ProductVersion', u'1.0.0'),
+        StringStruct(u'Author', u'邢漫路'),
+        StringStruct(u'Contact', u'17917306@qq.com'),
+        StringStruct(u'DevelopmentInfo', u'本程序源代码100%使用自然语言通过cursor调用claude-3.7-sonnet完成')])
+      ]), 
+    VarFileInfo([VarStruct(u'Translation', [2052, 1200])])
+  ]
+)

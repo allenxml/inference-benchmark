@@ -7,11 +7,15 @@ import sys
 import shutil
 import subprocess
 import platform
+# 导入版本信息
+from version import VERSION, AUTHOR, CONTACT, DEVELOPMENT_INFO
 
 
 def main():
     """主函数"""
     print("开始打包LLM基准测试工具...")
+    print(f"版本: {VERSION}")
+    print(f"作者: {AUTHOR}")
     
     # 检查PyInstaller是否已安装
     try:
@@ -47,7 +51,7 @@ def main():
             shutil.rmtree(dir_name)
     
     # 创建spec文件
-    spec_content = """# -*- mode: python ; coding: utf-8 -*-
+    spec_content = f"""# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
@@ -67,7 +71,7 @@ a = Analysis(
         'matplotlib.backends.backend_tkagg'
     ],
     hookspath=[],
-    hooksconfig={},
+    hooksconfig={{}},
     runtime_hooks=[],
     excludes=[],
     win_no_prefer_redirects=False,
@@ -99,12 +103,51 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='icon.ico',
+    version='version_info.txt',  # 添加版本信息文件
 )
 """
     
     # 写入spec文件
     with open("llm_benchmark.spec", "w", encoding="utf-8") as f:
         f.write(spec_content)
+    
+    # 创建版本信息文件
+    version_info_content = f"""
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=({VERSION.replace('.', ', ')}, 0),
+    prodvers=({VERSION.replace('.', ', ')}, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+    ),
+  kids=[
+    StringFileInfo(
+      [
+      StringTable(
+        u'080404b0',
+        [StringStruct(u'CompanyName', u'{AUTHOR}'),
+        StringStruct(u'FileDescription', u'LLM服务基准测试工具'),
+        StringStruct(u'FileVersion', u'{VERSION}'),
+        StringStruct(u'InternalName', u'LLM基准测试工具'),
+        StringStruct(u'LegalCopyright', u'© {AUTHOR}. All rights reserved.'),
+        StringStruct(u'OriginalFilename', u'LLM基准测试工具.exe'),
+        StringStruct(u'ProductName', u'LLM基准测试工具'),
+        StringStruct(u'ProductVersion', u'{VERSION}'),
+        StringStruct(u'Author', u'{AUTHOR}'),
+        StringStruct(u'Contact', u'{CONTACT}'),
+        StringStruct(u'DevelopmentInfo', u'{DEVELOPMENT_INFO}')])
+      ]), 
+    VarFileInfo([VarStruct(u'Translation', [2052, 1200])])
+  ]
+)
+"""
+    
+    with open("version_info.txt", "w", encoding="utf-8") as f:
+        f.write(version_info_content)
     
     # 创建一个简单的图标
     if not os.path.exists("icon.ico"):

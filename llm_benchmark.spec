@@ -50,4 +50,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='icon.ico',
+    version='version_info.txt',  # 添加版本信息文件
 )
