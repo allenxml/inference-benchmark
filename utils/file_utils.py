@@ -131,7 +131,8 @@ def read_text_file(file_path: str, default: str = "") -> str:
         return default
 
 
-def create_markdown_summary(log_dir: str, title: str, config: Dict[str, Any], system_info: Dict[str, Any]) -> str:
+def create_markdown_summary(log_dir: str, title: str, config: Dict[str, Any], system_info: Dict[str, Any], 
+                           all_round_results: List[Dict] = None, summary_data: Dict[str, Any] = None) -> str:
     """
     创建Markdown格式的摘要文件
     
@@ -140,6 +141,8 @@ def create_markdown_summary(log_dir: str, title: str, config: Dict[str, Any], sy
         title: 标题
         config: 配置信息
         system_info: 系统信息
+        all_round_results: 所有轮次的测试结果和场景信息
+        summary_data: 测试汇总数据
         
     Returns:
         Markdown文件路径
@@ -148,9 +151,70 @@ def create_markdown_summary(log_dir: str, title: str, config: Dict[str, Any], sy
     
     with open(summary_md, "w", encoding="utf-8") as f:
         f.write(f"# {title}\n\n")
+        
+        # 仅包含基本的生成时间信息
         f.write(f"生成时间: {datetime.now()}\n\n")
         
-        # 记录配置信息
+        if summary_data:
+            # 使用与汇总邮件相同的格式内容
+            f.write(f"## 测试结果汇总\n\n")
+            f.write(f"测试开始时间: {summary_data.get('start_time', '')}\n")
+            f.write(f"测试结束时间: {summary_data.get('end_time', '')}\n\n")
+            
+            scenarios_count = len(all_round_results) if all_round_results else 0
+            failed_count = len(summary_data.get('failed_scenarios', []))
+            
+            f.write(f"测试场景数量: {scenarios_count} 成功, {failed_count} 失败\n\n")
+            
+            f.write(f"平均请求成功率: {summary_data.get('avg_success_rate', 0)}%\n")
+            f.write(f"平均每并发输出词元吞吐量: {summary_data.get('avg_per_concurrency_output_throughput', 0)} tok/s/并发\n")
+            f.write(f"平均每并发总词元吞吐量: {summary_data.get('avg_per_concurrency_token_throughput', 0)} tok/s/并发\n\n")
+            
+            # 如果有轮次结果，添加所有轮次的详细信息
+            if all_round_results and len(all_round_results) > 0:
+                f.write("\n## 各轮次详细测试结果\n\n")
+                
+                for i, round_data in enumerate(all_round_results):
+                    scenario = round_data.get("scenario", {})
+                    results = round_data.get("results", {})
+                    duration = round_data.get("duration", 0)
+                    
+                    if not scenario or not results:
+                        continue
+                        
+                    f.write(f"### 轮次 {i+1}\n\n")
+                    
+                    f.write(f"**场景:** 输入={scenario.get('input_len')}, 输出={scenario.get('output_len')}, 并发={scenario.get('concurrency')}, 请求={scenario.get('num_prompts')}, 范围={scenario.get('range_ratio')}, 前缀={scenario.get('prefix_len')}\n")
+                    f.write(f"**执行时间:** {duration} 秒\n\n")
+                    
+                    f.write("#### 请求统计\n")
+                    f.write(f"成功请求数: {results.get('completed', 0)} ({results.get('success_rate', 0)}%)\n")
+                    f.write(f"失败请求数: {results.get('failed', 0)} ({results.get('failure_rate', 0)}%)\n")
+                    f.write(f"总请求数: {results.get('total_requests', 0)}\n\n")
+                    
+                    f.write("#### 吞吐量指标\n")
+                    f.write(f"请求吞吐量: {results.get('request_throughput', 0)} req/s\n")
+                    f.write(f"输出词元吞吐量: {results.get('output_throughput', 0)} tok/s\n")
+                    f.write(f"每并发输出词元吞吐量: {results.get('per_concurrency_output_throughput', 0)} tok/s/并发\n")
+                    f.write(f"总词元吞吐量: {results.get('total_token_throughput', 0)} tok/s\n")
+                    f.write(f"每并发总词元吞吐量: {results.get('per_concurrency_total_throughput', 0)} tok/s/并发\n\n")
+                    
+                    f.write("#### 首词延迟 (TTFT)\n")
+                    f.write(f"平均TTFT (ms): {results.get('mean_ttft_ms', 0)}\n")
+                    f.write(f"中位数TTFT (ms): {results.get('median_ttft_ms', 0)}\n")
+                    f.write(f"P99 TTFT (ms): {results.get('p99_ttft_ms', 0)}\n\n")
+                    
+                    f.write("#### 每词延迟 (TPOT) (不含首词)\n")
+                    f.write(f"平均TPOT (ms): {results.get('mean_tpot_ms', 0)}\n")
+                    f.write(f"中位数TPOT (ms): {results.get('median_tpot_ms', 0)}\n")
+                    f.write(f"P99 TPOT (ms): {results.get('p99_tpot_ms', 0)}\n\n")
+                    
+                    f.write("#### 词间延迟 (ITL)\n")
+                    f.write(f"平均ITL (ms): {results.get('mean_itl_ms', 0)}\n")
+                    f.write(f"中位数ITL (ms): {results.get('median_itl_ms', 0)}\n")
+                    f.write(f"P99 ITL (ms): {results.get('p99_itl_ms', 0)}\n\n")
+        
+        # 添加基本配置信息
         f.write("## 测试配置\n\n")
         f.write(f"- 基础URL: {config.get('base_url', '')}\n")
         f.write(f"- 模型: {config.get('model', '')}\n")
