@@ -57,18 +57,36 @@ class EmailTab(ttk.Frame):
         self.smtp_port_var = tk.IntVar(value=465)
         ttk.Entry(self, textvariable=self.smtp_port_var, width=10).grid(row=5, column=1, sticky=tk.W, pady=2)
         
+        # 添加自定义邮件内容
+        ttk.Label(self, text="自定义邮件内容:", font=("Arial", 10, "bold")).grid(row=6, column=0, sticky=tk.W, pady=5)
+        ttk.Label(self, text="(将会添加到测试结果邮件的开头)").grid(row=6, column=1, sticky=tk.W, pady=5)
+        
+        # 自定义邮件内容文本框
+        self.custom_content_frame = ttk.Frame(self)
+        self.custom_content_frame.grid(row=7, column=0, columnspan=3, sticky=tk.W+tk.E, pady=5)
+        
+        # 使用Text控件而不是Entry，以支持多行文本
+        self.custom_content_text = tk.Text(self.custom_content_frame, height=10, width=80, wrap=tk.WORD)
+        self.custom_content_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # 添加滚动条
+        custom_content_scrollbar = ttk.Scrollbar(self.custom_content_frame, orient=tk.VERTICAL, command=self.custom_content_text.yview)
+        custom_content_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.custom_content_text.config(yscrollcommand=custom_content_scrollbar.set)
+        
         # 测试邮件按钮
         button_frame = ttk.Frame(self)
-        button_frame.grid(row=6, column=0, columnspan=3, sticky=tk.W, pady=10)
+        button_frame.grid(row=8, column=0, columnspan=3, sticky=tk.W, pady=10)
         
         ttk.Button(button_frame, text="测试邮件", command=self.test_email, width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="保存配置", command=self.save_config, width=15).pack(side=tk.LEFT, padx=5)
         
         # 说明
-        ttk.Label(self, text="说明:", font=("Arial", 10, "bold")).grid(row=7, column=0, sticky=tk.W, pady=5)
-        ttk.Label(self, text="1. 对于QQ邮箱，请使用授权码而不是登录密码").grid(row=8, column=0, columnspan=3, sticky=tk.W)
-        ttk.Label(self, text="2. 授权码可在QQ邮箱设置 -> 账户 -> POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务中获取").grid(row=9, column=0, columnspan=3, sticky=tk.W)
-        ttk.Label(self, text="3. 如果使用其他邮箱服务，请修改SMTP服务器和端口").grid(row=10, column=0, columnspan=3, sticky=tk.W)
+        ttk.Label(self, text="说明:", font=("Arial", 10, "bold")).grid(row=9, column=0, sticky=tk.W, pady=5)
+        ttk.Label(self, text="1. 对于QQ邮箱，请使用授权码而不是登录密码").grid(row=10, column=0, columnspan=3, sticky=tk.W)
+        ttk.Label(self, text="2. 授权码可在QQ邮箱设置 -> 账户 -> POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务中获取").grid(row=11, column=0, columnspan=3, sticky=tk.W)
+        ttk.Label(self, text="3. 如果使用其他邮箱服务，请修改SMTP服务器和端口").grid(row=12, column=0, columnspan=3, sticky=tk.W)
+        ttk.Label(self, text="4. 自定义邮件内容将添加到测试结果邮件的开头").grid(row=13, column=0, columnspan=3, sticky=tk.W)
     
     def load_config(self, config: Dict[str, Any]):
         """
@@ -87,6 +105,9 @@ class EmailTab(ttk.Frame):
             self.smtp_server_var.set(config["smtp_server"])
         if "smtp_port" in config:
             self.smtp_port_var.set(config["smtp_port"])
+        if "custom_email_content" in config:
+            self.custom_content_text.delete(1.0, tk.END)
+            self.custom_content_text.insert(tk.END, config["custom_email_content"])
     
     def get_config(self) -> Dict[str, Any]:
         """
@@ -100,7 +121,8 @@ class EmailTab(ttk.Frame):
             "email_to": self.email_to_var.get(),
             "email_password": self.email_password_var.get(),
             "smtp_server": self.smtp_server_var.get(),
-            "smtp_port": self.smtp_port_var.get()
+            "smtp_port": self.smtp_port_var.get(),
+            "custom_email_content": self.custom_content_text.get(1.0, tk.END).strip()
         }
     
     def toggle_password_visibility(self):

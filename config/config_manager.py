@@ -103,7 +103,8 @@ class EmailConfig(ConfigSection):
             "smtp_server": "smtp.qq.com",
             "smtp_port": 465,
             "send_each": True,
-            "send_final": True
+            "send_final": True,
+            "custom_email_content": ""
         }
         super().__init__(file_path, default_config)
 
