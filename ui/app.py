@@ -82,7 +82,7 @@ class BenchmarkApp(tk.Tk):
         super().__init__()
         
         # 设置窗口属性
-        self.title("LLM服务基准测试工具")
+        self.title("LLM服务基准测试工具 - 版本:1.1.0  作者:邢漫路 联系方式:17917306@qq.com")
         self.geometry("900x700")
         self.minsize(800, 600)
         
@@ -100,31 +100,20 @@ class BenchmarkApp(tk.Tk):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # 创建各个标签页
-        self.main_tab = MainTab(self.notebook, self)
-        self.api_key_tab = ApiKeyTab(self.notebook, self)
-        self.email_tab = EmailTab(self.notebook, self)
-        self.scenarios_tab = ScenariosTab(self.notebook, self)
-        self.logs_tab = LogsTab(self.notebook, self)
+        # 创建标签页
+        self.create_tabs()
         
-        # 添加标签页到notebook
-        self.notebook.add(self.main_tab, text="主页")
-        self.notebook.add(self.api_key_tab, text="API密钥管理")
-        self.notebook.add(self.email_tab, text="邮件配置")
-        self.notebook.add(self.scenarios_tab, text="测试场景")
-        self.notebook.add(self.logs_tab, text="日志")
-        
-        # 状态栏
-        self.status_var = tk.StringVar()
-        self.status_var.set("就绪")
-        self.status_bar = ttk.Label(self, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
-        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        # 创建状态栏
+        self.create_statusbar()
         
         # 加载配置
         self.load_configs()
         
         # 绑定关闭事件
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        
+        # 绑定全局快捷键
+        self.bind_global_shortcuts()
     
     def load_configs(self):
         """加载所有配置"""
@@ -199,16 +188,17 @@ class BenchmarkApp(tk.Tk):
         email_config = self.email_tab.get_config()
         send_each = self.main_tab.send_each_var.get()
         send_final = self.main_tab.send_final_var.get()
-        
-        # 创建日志目录
-        log_dir = create_log_directory()
-        self.log_message(f"创建日志目录: {log_dir}")
+        custom_email_content = email_config.get("custom_email_content", "")
         
         # 收集系统信息
         self.log_message("收集系统信息...")
         system_info = collect_system_info()
         
-        # 创建摘要Markdown文件
+        # 创建日志目录
+        log_dir = create_log_directory()
+        self.log_message(f"创建日志目录: {log_dir}")
+        
+        # 创建摘要Markdown文件（初始版本，后续会更新）
         summary_md = create_markdown_summary(log_dir, "LLM服务基准测试结果汇总报告", app_config, system_info)
         self.log_message(f"创建摘要文件: {summary_md}")
         
@@ -224,11 +214,11 @@ class BenchmarkApp(tk.Tk):
         # 启动测试线程
         threading.Thread(
             target=self._run_benchmark_thread,
-            args=(app_config, scenarios_to_run, api_key, log_dir, summary_md, email_sender, send_each, send_final),
+            args=(app_config, scenarios_to_run, api_key, log_dir, summary_md, email_sender, send_each, send_final, system_info, custom_email_content),
             daemon=True
         ).start()
     
-    def _run_benchmark_thread(self, app_config, scenarios, api_key, log_dir, summary_md, email_sender, send_each, send_final):
+    def _run_benchmark_thread(self, app_config, scenarios, api_key, log_dir, summary_md, email_sender, send_each, send_final, system_info, custom_email_content):
         """
         运行基准测试线程
         
@@ -241,6 +231,8 @@ class BenchmarkApp(tk.Tk):
             email_sender: 邮件发送器
             send_each: 是否发送每轮邮件
             send_final: 是否发送最终汇总邮件
+            system_info: 系统信息
+            custom_email_content: 邮件自定义内容
         """
         # 更新状态
         self.update_status("基准测试运行中...")
@@ -260,6 +252,9 @@ class BenchmarkApp(tk.Tk):
         scenario_count = 0
         failed_scenarios = 0
         failed_scenarios_info = []
+        
+        # 存储所有轮次的测试结果
+        all_round_results = []
         
         # 运行每个测试场景
         for i, scenario in enumerate(scenarios):
@@ -326,6 +321,13 @@ class BenchmarkApp(tk.Tk):
                 
                 # 处理结果
                 if results:
+                    # 保存本轮测试结果到列表中
+                    all_round_results.append({
+                        "scenario": scenario,
+                        "results": results,
+                        "duration": int(duration)
+                    })
+                    
                     # 创建单轮Markdown文件
                     round_md = create_round_markdown(log_dir, scenario_index, scenario, results, int(duration))
                     
@@ -348,7 +350,7 @@ class BenchmarkApp(tk.Tk):
                     # 发送每轮邮件
                     if send_each and email_sender:
                         # 准备邮件正文
-                        round_email_body = create_round_email_body(scenario, results, int(duration))
+                        round_email_body = create_round_email_body(scenario, results, int(duration), custom_email_content)
                         round_email_file = os.path.join(log_dir, f"email_round_{scenario_index}.txt")
                         with open(round_email_file, 'w', encoding='utf-8') as f:
                             f.write(round_email_body)
@@ -406,17 +408,27 @@ class BenchmarkApp(tk.Tk):
         summary_file = os.path.join(log_dir, "summary.json")
         write_json_file(summary_file, summary_data)
         
+        # 更新摘要Markdown文件，包含所有测试结果
+        updated_summary_md = create_markdown_summary(
+            log_dir, 
+            "LLM服务基准测试结果汇总报告", 
+            app_config, 
+            system_info,
+            all_round_results,
+            summary_data
+        )
+        
         # 发送最终汇总邮件
         if send_final and email_sender:
             # 准备邮件正文
-            final_email_body = create_final_email_body(summary_data, scenario_count, failed_scenarios)
+            final_email_body = create_final_email_body(summary_data, scenario_count, failed_scenarios, all_round_results, custom_email_content)
             final_email_file = os.path.join(log_dir, "email_final.txt")
             with open(final_email_file, 'w', encoding='utf-8') as f:
                 f.write(final_email_body)
             
             # 发送邮件
             final_email_subject = f"LLM基准测试结果汇总 - {start_time.strftime('%Y-%m-%d')}"
-            email_sender.send_email_with_file_body(final_email_subject, final_email_file, [summary_md])
+            email_sender.send_email_with_file_body(final_email_subject, final_email_file, [updated_summary_md])
             self.log_message("已发送最终汇总邮件")
         
         # 更新状态
@@ -433,6 +445,59 @@ class BenchmarkApp(tk.Tk):
         
         # 销毁窗口
         self.destroy()
+    
+    def create_tabs(self):
+        """创建标签页"""
+        # 创建主标签页
+        self.main_tab = MainTab(self.notebook, self)
+        self.api_key_tab = ApiKeyTab(self.notebook, self)
+        self.email_tab = EmailTab(self.notebook, self)
+        self.scenarios_tab = ScenariosTab(self.notebook, self)
+        self.logs_tab = LogsTab(self.notebook, self)
+        
+        # 添加标签页到notebook
+        self.notebook.add(self.main_tab, text="主页")
+        self.notebook.add(self.api_key_tab, text="API密钥管理")
+        self.notebook.add(self.email_tab, text="邮件配置")
+        self.notebook.add(self.scenarios_tab, text="测试场景")
+        self.notebook.add(self.logs_tab, text="日志")
+    
+    def create_statusbar(self):
+        """创建状态栏"""
+        # 状态栏
+        self.status_var = tk.StringVar()
+        self.status_var.set("就绪")
+        self.status_bar = ttk.Label(self, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+    
+    def bind_global_shortcuts(self):
+        """绑定全局快捷键"""
+        # 开始测试的快捷键 (Ctrl+R)
+        self.bind('<Control-r>', lambda e: self.start_benchmark())
+        
+        # 在激活的标签页上执行关键操作的快捷键
+        self.bind('<F1>', lambda e: self.show_help())
+        
+        # 在状态栏显示快捷键提示
+        self.update_status("提示: 使用Ctrl+R启动测试, Ctrl+N添加场景, Ctrl+E编辑场景, Ctrl+D删除场景")
+    
+    def show_help(self):
+        """显示帮助信息"""
+        help_text = """
+快捷键说明:
+
+全局:
+- Ctrl+R: 启动测试
+- F1: 显示此帮助
+
+场景管理:
+- Ctrl+N: 添加新场景
+- Ctrl+E: 编辑选中场景
+- Ctrl+D: 删除选中场景
+- Ctrl+S: 保存配置
+- Ctrl+A: 全选场景
+        """
+        messagebox.showinfo("快捷键帮助", help_text)
 
 
 def main():

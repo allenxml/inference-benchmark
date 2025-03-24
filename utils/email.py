@@ -108,7 +108,7 @@ class EmailSender:
             return False
 
 
-def create_round_email_body(scenario: Dict[str, Union[str, int, float]], results: Dict[str, Union[str, int, float]], duration: int) -> str:
+def create_round_email_body(scenario: Dict[str, Union[str, int, float]], results: Dict[str, Union[str, int, float]], duration: int, custom_content: str = "") -> str:
     """
     创建单轮测试的邮件正文
     
@@ -116,11 +116,13 @@ def create_round_email_body(scenario: Dict[str, Union[str, int, float]], results
         scenario: 测试场景配置
         results: 测试结果
         duration: 测试持续时间（秒）
+        custom_content: 自定义邮件内容
         
     Returns:
         邮件正文
     """
-    body = f"""场景: 输入={scenario.get('input_len')}, 输出={scenario.get('output_len')}, 并发={scenario.get('concurrency')}, 请求={scenario.get('num_prompts')}, 范围={scenario.get('range_ratio')}, 前缀={scenario.get('prefix_len')}
+    # 拼接自定义内容和测试结果
+    test_content = f"""场景: 输入={scenario.get('input_len')}, 输出={scenario.get('output_len')}, 并发={scenario.get('concurrency')}, 请求={scenario.get('num_prompts')}, 范围={scenario.get('range_ratio')}, 前缀={scenario.get('prefix_len')}
 执行时间: {duration} 秒
 
 ---------------请求统计----------------
@@ -150,10 +152,17 @@ P99 TPOT (ms): {results.get('p99_tpot_ms', 0)}
 中位数ITL (ms): {results.get('median_itl_ms', 0)}
 P99 ITL (ms): {results.get('p99_itl_ms', 0)}
 """
+
+    # 如果有自定义内容，添加到测试结果前面
+    if custom_content:
+        body = f"{custom_content}\n\n{'-' * 50}\n\n{test_content}"
+    else:
+        body = test_content
+        
     return body
 
 
-def create_final_email_body(summary: Dict[str, Union[str, int, float]], scenarios_count: int, failed_count: int) -> str:
+def create_final_email_body(summary: Dict[str, Union[str, int, float]], scenarios_count: int, failed_count: int, all_round_results: List[Dict] = None, custom_content: str = "") -> str:
     """
     创建最终汇总邮件正文
     
@@ -161,11 +170,14 @@ def create_final_email_body(summary: Dict[str, Union[str, int, float]], scenario
         summary: 测试汇总结果
         scenarios_count: 测试场景数量
         failed_count: 失败场景数量
+        all_round_results: 所有轮次的测试结果和场景信息
+        custom_content: 自定义邮件内容
         
     Returns:
         邮件正文
     """
-    body = f"""LLM基准测试结果汇总
+    # 基本摘要信息
+    test_content = f"""LLM基准测试结果汇总
 
 测试开始时间: {summary.get('start_time', '')}
 测试结束时间: {summary.get('end_time', '')}
@@ -176,6 +188,58 @@ def create_final_email_body(summary: Dict[str, Union[str, int, float]], scenario
 平均每并发输出词元吞吐量: {summary.get('avg_per_concurrency_output_throughput', 0)} tok/s/并发
 平均每并发总词元吞吐量: {summary.get('avg_per_concurrency_token_throughput', 0)} tok/s/并发
 
-详细结果请查看附件。
 """
+
+    # 如果有轮次结果，添加所有轮次的详细信息
+    if all_round_results and len(all_round_results) > 0:
+        test_content += "\n\n==================== 各轮次详细测试结果 ====================\n\n"
+        
+        for i, round_data in enumerate(all_round_results):
+            scenario = round_data.get("scenario", {})
+            results = round_data.get("results", {})
+            duration = round_data.get("duration", 0)
+            
+            if not scenario or not results:
+                continue
+                
+            test_content += f"""
+==================== 轮次 {i+1} ====================
+
+场景: 输入={scenario.get('input_len')}, 输出={scenario.get('output_len')}, 并发={scenario.get('concurrency')}, 请求={scenario.get('num_prompts')}, 范围={scenario.get('range_ratio')}, 前缀={scenario.get('prefix_len')}
+执行时间: {duration} 秒
+
+---------------请求统计----------------
+成功请求数: {results.get('completed', 0)} ({results.get('success_rate', 0)}%)
+失败请求数: {results.get('failed', 0)} ({results.get('failure_rate', 0)}%)
+总请求数: {results.get('total_requests', 0)}
+
+---------------吞吐量指标----------------
+请求吞吐量: {results.get('request_throughput', 0)} req/s
+输出词元吞吐量: {results.get('output_throughput', 0)} tok/s
+每并发输出词元吞吐量: {results.get('per_concurrency_output_throughput', 0)} tok/s/并发
+总词元吞吐量: {results.get('total_token_throughput', 0)} tok/s
+每并发总词元吞吐量: {results.get('per_concurrency_total_throughput', 0)} tok/s/并发
+
+---------------首词延迟 (TTFT)----------------
+平均TTFT (ms): {results.get('mean_ttft_ms', 0)}
+中位数TTFT (ms): {results.get('median_ttft_ms', 0)}
+P99 TTFT (ms): {results.get('p99_ttft_ms', 0)}
+
+-----每词延迟 (TPOT) (不含首词)------
+平均TPOT (ms): {results.get('mean_tpot_ms', 0)}
+中位数TPOT (ms): {results.get('median_tpot_ms', 0)}
+P99 TPOT (ms): {results.get('p99_tpot_ms', 0)}
+
+---------------词间延迟 (ITL)----------------
+平均ITL (ms): {results.get('mean_itl_ms', 0)}
+中位数ITL (ms): {results.get('median_itl_ms', 0)}
+P99 ITL (ms): {results.get('p99_itl_ms', 0)}
+"""
+
+    # 如果有自定义内容，添加到测试结果前面
+    if custom_content:
+        body = f"{custom_content}\n\n{'-' * 50}\n\n{test_content}"
+    else:
+        body = test_content
+    
     return body 

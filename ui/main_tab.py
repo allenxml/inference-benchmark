@@ -21,82 +21,106 @@ class MainTab(ttk.Frame):
         super().__init__(parent)
         self.app = app
         
-        # 创建左右分栏
-        left_frame = ttk.Frame(self)
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 创建布局
+        self.create_widgets()
         
-        right_frame = ttk.Frame(self)
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 绑定快捷键
+        self.bind_shortcuts()
+    
+    def bind_shortcuts(self):
+        """绑定快捷键"""
+        # 为按钮添加提示文本
+        if hasattr(self, 'start_button'):
+            self.start_button.config(text="开始测试 (Ctrl+R)")
+        if hasattr(self, 'select_all_button'):
+            self.select_all_button.config(text="全选 (Ctrl+A)")
+    
+    def create_widgets(self):
+        """创建界面元素"""
+        # 设置列权重
+        self.grid_columnconfigure(0, weight=1)  # 左侧区域
+        self.grid_columnconfigure(1, weight=1)  # 右侧区域
         
         # 左侧 - 基本配置
-        ttk.Label(left_frame, text="基本配置", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky=tk.W, pady=5, columnspan=2)
+        left_frame = ttk.LabelFrame(self, text="基本配置")
+        left_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
         
-        # 服务器URL
-        ttk.Label(left_frame, text="服务器URL:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        # URL配置
+        ttk.Label(left_frame, text="服务器URL:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.url_var = tk.StringVar(value="http://127.0.0.1:8000")
-        ttk.Entry(left_frame, textvariable=self.url_var, width=40).grid(row=1, column=1, sticky=tk.W, pady=2)
+        ttk.Entry(left_frame, textvariable=self.url_var, width=40).grid(row=0, column=1, sticky=tk.W, pady=2)
         
         # 模型名称
-        ttk.Label(left_frame, text="模型名称:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text="模型名称:").grid(row=1, column=0, sticky=tk.W, pady=2)
         self.model_var = tk.StringVar(value="test")
-        ttk.Entry(left_frame, textvariable=self.model_var, width=40).grid(row=2, column=1, sticky=tk.W, pady=2)
+        ttk.Entry(left_frame, textvariable=self.model_var, width=40).grid(row=1, column=1, sticky=tk.W, pady=2)
         
         # 分词器路径
-        ttk.Label(left_frame, text="分词器路径:").grid(row=3, column=0, sticky=tk.W, pady=2)
-        self.tokenizer_var = tk.StringVar()
+        ttk.Label(left_frame, text="分词器路径:").grid(row=2, column=0, sticky=tk.W, pady=2)
         tokenizer_frame = ttk.Frame(left_frame)
-        tokenizer_frame.grid(row=3, column=1, sticky=tk.W, pady=2)
-        ttk.Entry(tokenizer_frame, textvariable=self.tokenizer_var, width=30).pack(side=tk.LEFT)
-        ttk.Button(tokenizer_frame, text="浏览...", command=self.browse_tokenizer).pack(side=tk.LEFT, padx=5)
+        tokenizer_frame.grid(row=2, column=1, sticky=tk.W, pady=2)
+        self.tokenizer_var = tk.StringVar()
+        tokenizer_entry = ttk.Entry(tokenizer_frame, textvariable=self.tokenizer_var, width=35)
+        tokenizer_entry.grid(row=0, column=0, sticky=tk.W)
+        browse_button = ttk.Button(tokenizer_frame, text="浏览...", command=self.browse_tokenizer)
+        browse_button.grid(row=0, column=1, sticky=tk.W, padx=5)
         
         # 后端类型
-        ttk.Label(left_frame, text="后端类型:").grid(row=4, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text="后端类型:").grid(row=3, column=0, sticky=tk.W, pady=2)
         self.backend_var = tk.StringVar(value="openai")
         backend_values = ["openai", "vllm"]
         backend_combo = ttk.Combobox(left_frame, textvariable=self.backend_var, values=backend_values, state="readonly", width=38)
-        backend_combo.grid(row=4, column=1, sticky=tk.W, pady=2)
+        backend_combo.grid(row=3, column=1, sticky=tk.W, pady=2)
         
         # 端点
-        ttk.Label(left_frame, text="API端点:").grid(row=5, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text="API端点:").grid(row=4, column=0, sticky=tk.W, pady=2)
         self.endpoint_var = tk.StringVar(value="/v1/completions")
-        ttk.Entry(left_frame, textvariable=self.endpoint_var, width=40).grid(row=5, column=1, sticky=tk.W, pady=2)
+        ttk.Entry(left_frame, textvariable=self.endpoint_var, width=40).grid(row=4, column=1, sticky=tk.W, pady=2)
+        
+        # 保存配置按钮
+        self.save_button = ttk.Button(left_frame, text="保存配置", command=self.save_config)
+        self.save_button.grid(row=5, column=0, columnspan=2, pady=10)
         
         # 右侧 - 测试场景选择
-        ttk.Label(right_frame, text="测试场景", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky=tk.W, pady=5, columnspan=2)
+        right_frame = ttk.LabelFrame(self, text="测试场景")
+        right_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
         
         # 场景列表
-        ttk.Label(right_frame, text="选择测试场景:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.scenario_listbox = tk.Listbox(right_frame, height=8, width=40, selectmode=tk.MULTIPLE)
-        self.scenario_listbox.grid(row=2, column=0, columnspan=2, sticky=tk.W+tk.E, pady=2)
+        ttk.Label(right_frame, text="选择测试场景:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(right_frame, text="(名称-输入/输出/并发/请求数)").grid(row=0, column=1, sticky=tk.W, pady=2)
+        self.scenario_listbox = tk.Listbox(right_frame, height=8, width=38, selectmode=tk.MULTIPLE)
+        self.scenario_listbox.grid(row=1, column=0, columnspan=2, sticky=tk.W+tk.E, pady=2)
         
         # 场景列表滚动条
         scenario_scrollbar = ttk.Scrollbar(right_frame, orient=tk.VERTICAL, command=self.scenario_listbox.yview)
-        scenario_scrollbar.grid(row=2, column=2, sticky=tk.N+tk.S)
+        scenario_scrollbar.grid(row=1, column=2, sticky=tk.N+tk.S)
         self.scenario_listbox.config(yscrollcommand=scenario_scrollbar.set)
         
         # 选择全部/取消全部按钮
         button_frame = ttk.Frame(right_frame)
-        button_frame.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=5)
-        ttk.Button(button_frame, text="全选", command=self.select_all_scenarios).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="取消全选", command=self.deselect_all_scenarios).pack(side=tk.LEFT, padx=5)
+        button_frame.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
+        
+        self.select_all_button = ttk.Button(button_frame, text="全选", command=self.select_all_scenarios)
+        self.select_all_button.grid(row=0, column=0, padx=5)
+        
+        self.deselect_all_button = ttk.Button(button_frame, text="取消全选", command=self.deselect_all_scenarios)
+        self.deselect_all_button.grid(row=0, column=1, padx=5)
         
         # 邮件选项
-        ttk.Label(right_frame, text="邮件选项:", font=("Arial", 10, "bold")).grid(row=4, column=0, sticky=tk.W, pady=5, columnspan=2)
+        email_frame = ttk.LabelFrame(right_frame, text="邮件选项")
+        email_frame.grid(row=3, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
         
-        # 发送每轮邮件
         self.send_each_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(right_frame, text="每轮测试后发送邮件", variable=self.send_each_var).grid(row=5, column=0, sticky=tk.W, pady=2)
+        each_checkbox = ttk.Checkbutton(email_frame, text="每轮测试后发送邮件", variable=self.send_each_var)
+        each_checkbox.grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
         
-        # 发送最终汇总邮件
         self.send_final_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(right_frame, text="发送最终汇总邮件", variable=self.send_final_var).grid(row=6, column=0, sticky=tk.W, pady=2)
+        final_checkbox = ttk.Checkbutton(email_frame, text="最终汇总发送邮件", variable=self.send_final_var)
+        final_checkbox.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
         
-        # 底部 - 开始测试按钮
-        button_frame = ttk.Frame(self)
-        button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
-        
-        ttk.Button(button_frame, text="开始测试", command=self.start_benchmark, width=20).pack(side=tk.RIGHT, padx=10)
-        ttk.Button(button_frame, text="保存配置", command=self.save_config, width=20).pack(side=tk.RIGHT, padx=10)
+        # 开始测试按钮
+        self.start_button = ttk.Button(right_frame, text="开始测试", command=self.start_benchmark, width=20)
+        self.start_button.grid(row=4, column=0, columnspan=2, pady=10)
     
     def browse_tokenizer(self):
         """浏览选择分词器路径"""
@@ -134,7 +158,10 @@ class MainTab(ttk.Frame):
             input_len = scenario.get("input_len", 0)
             output_len = scenario.get("output_len", 0)
             concurrency = scenario.get("concurrency", 0)
-            self.scenario_listbox.insert(tk.END, f"{name} (输入={input_len}, 输出={output_len}, 并发={concurrency})")
+            num_prompts = scenario.get("num_prompts", 0)
+            range_ratio = scenario.get("range_ratio", 1.0)
+            prefix_len = scenario.get("prefix_len", 0)
+            self.scenario_listbox.insert(tk.END, f"{name} - {input_len}/{output_len}/{concurrency}/{num_prompts}")
     
     def get_config(self) -> Dict[str, Any]:
         """
